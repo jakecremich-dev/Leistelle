@@ -5,60 +5,33 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Leitstellenmanagement</title>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .hidden {
-            display: none;
-        }
-        .tabs button {
-            padding: 10px;
-            margin-right: 5px;
-            cursor: pointer;
-        }
-        .active {
-            font-weight: bold;
-            text-decoration: underline;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: left;
-        }
-        .badge {
-            padding: 5px;
-            color: white;
-            border-radius: 5px;
-        }
-        .badge.success {
-            background-color: green;
-        }
-        .badge.danger {
-            background-color: red;
-        }
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .hidden { display: none; }
+        .tabs button { padding: 10px; margin-right: 5px; cursor: pointer; }
+        .active { font-weight: bold; text-decoration: underline; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        .badge { padding: 5px; color: white; border-radius: 5px; }
+        .badge.success { background-color: green; }
+        .badge.danger { background-color: red; }
     </style>
 </head>
 <body>
 
     <div id="login-screen">
         <h2>Login</h2>
-        <input type="text" id="username" placeholder="Benutzername">
+        <input type="text" id="login-name" placeholder="Benutzername">
+        <input type="password" id="login-password" placeholder="Passwort">
         <button onclick="login()">Anmelden</button>
     </div>
 
     <div id="app" class="hidden">
         <h1>Leitstellenmanagement</h1>
+        <p>Angemeldet als: <strong id="current-user"></strong></p>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('mitarbeiter')">Mitarbeiter</button>
-            <button class="tab-btn" onclick="switchTab('sektoren')">Sektoren</button>
-            <button class="tab-btn" onclick="switchTab('sanktionen')">Sanktionen</button>
+            <button class="tab-btn" onclick="switchTab('admin')">Adminbereich</button>
         </div>
 
         <!-- Mitarbeiterliste -->
@@ -69,8 +42,6 @@
                     <th>Name</th>
                     <th>Telefonnummer</th>
                     <th>Rang</th>
-                    <th>Rolle</th>
-                    <th>Sektor</th>
                     <th>Status</th>
                     <th>Aktion</th>
                 </tr>
@@ -78,46 +49,55 @@
             </table>
         </div>
 
-        <!-- Sektorverwaltung -->
-        <div id="sektoren" class="tab-content hidden">
-            <h2>Sektorverwaltung</h2>
-            <select id="sector-select"></select>
-            <p>Ausgewählter Sektor: <span id="selected-sector">Nord</span></p>
-            <input type="text" id="new-sector" placeholder="Neuen Sektor hinzufügen">
-            <button onclick="addSector()">Hinzufügen</button>
-        </div>
-
-        <!-- Sanktionen -->
-        <div id="sanktionen" class="tab-content hidden">
-            <h2>Sanktionssystem</h2>
-            <table>
-                <tr>
-                    <th>Name</th>
-                    <th>Grund</th>
-                    <th>Beschreibung</th>
-                    <th>Status</th>
-                    <th>Aktion</th>
-                </tr>
-                <tbody id="sanction-table"></tbody>
-            </table>
+        <!-- Adminbereich -->
+        <div id="admin" class="tab-content hidden">
+            <h2>Adminbereich</h2>
+            <p>Nur Admins können Mitarbeiter verwalten.</p>
+            <input type="text" id="new-emp-name" placeholder="Name">
+            <input type="text" id="new-emp-phone" placeholder="Telefonnummer">
+            <input type="text" id="new-emp-rank" placeholder="Rang">
+            <input type="text" id="new-emp-role" placeholder="Rolle">
+            <input type="password" id="new-emp-password" placeholder="Passwort">
+            <button onclick="addEmployee()">Mitarbeiter hinzufügen</button>
         </div>
     </div>
 
     <script>
+        let adminAccount = { username: "admin", password: "1234" };
         let employees = [
-            { id: 1, name: "Max Mustermann", phone: "123-456789", rank: "Leiter", role: "Dispatcher", sector: "Nord", status: "Aktiv" },
-            { id: 2, name: "Erika Muster", phone: "987-654321", rank: "Operator", role: "Operator", sector: "Süd", status: "Inaktiv" },
-            { id: 3, name: "Paul Schmidt", phone: "456-789123", rank: "Supervisor", role: "Dispatcher", sector: "Ost", status: "Aktiv" }
+            { id: 1, name: "Max Mustermann", phone: "123-456789", rank: "Leiter", role: "Dispatcher", status: "Aktiv", password: "pass123" },
+            { id: 2, name: "Erika Muster", phone: "987-654321", rank: "Operator", role: "Operator", status: "Inaktiv", password: "pass456" }
         ];
-        
-        let sectors = ["Nord", "Süd", "Ost", "West"];
-        let sanctions = [];
+        let currentUser = null;
 
         function login() {
+            let username = document.getElementById("login-name").value;
+            let password = document.getElementById("login-password").value;
+
+            if (username === adminAccount.username && password === adminAccount.password) {
+                currentUser = "Admin";
+            } else {
+                let user = employees.find(e => e.name === username && e.password === password);
+                if (user) {
+                    currentUser = user.name;
+                } else {
+                    alert("Falscher Benutzername oder Passwort!");
+                    return;
+                }
+            }
+
             document.getElementById("login-screen").classList.add("hidden");
             document.getElementById("app").classList.remove("hidden");
+            document.getElementById("current-user").innerText = currentUser;
+
             loadEmployees();
-            loadSectors();
+            checkAdminAccess();
+        }
+
+        function checkAdminAccess() {
+            if (currentUser !== "Admin") {
+                document.getElementById("admin").classList.add("hidden");
+            }
         }
 
         function switchTab(tab) {
@@ -136,63 +116,47 @@
                         <td>${emp.name}</td>
                         <td>${emp.phone}</td>
                         <td>${emp.rank}</td>
-                        <td>${emp.role}</td>
-                        <td>${emp.sector}</td>
                         <td><span class="badge ${emp.status === "Aktiv" ? "success" : "danger"}">${emp.status}</span></td>
-                        <td><button onclick="addSanction(${emp.id})">Verwarnen</button></td>
+                        <td>
+                            ${currentUser === "Admin" ? `<button onclick="removeEmployee(${emp.id})">Löschen</button>` : ""}
+                        </td>
                     </tr>
                 `;
             });
         }
 
-        function loadSectors() {
-            let select = document.getElementById("sector-select");
-            select.innerHTML = "";
-            sectors.forEach(sec => {
-                let option = document.createElement("option");
-                option.value = sec;
-                option.innerText = sec;
-                select.appendChild(option);
-            });
-        }
-
-        function addSector() {
-            let newSector = document.getElementById("new-sector").value;
-            if (newSector && !sectors.includes(newSector)) {
-                sectors.push(newSector);
-                loadSectors();
-                document.getElementById("new-sector").value = "";
+        function addEmployee() {
+            if (currentUser !== "Admin") {
+                alert("Nur Admins können Mitarbeiter hinzufügen!");
+                return;
             }
-        }
 
-        function addSanction(empId) {
-            let emp = employees.find(e => e.id === empId);
-            let reason = prompt("Grund für die Sanktion:");
-            let description = prompt("Beschreibung:");
-            if (reason && description) {
-                sanctions.push({ name: emp.name, reason, description, status: "Aktiv" });
-                loadSanctions();
+            let name = document.getElementById("new-emp-name").value;
+            let phone = document.getElementById("new-emp-phone").value;
+            let rank = document.getElementById("new-emp-rank").value;
+            let role = document.getElementById("new-emp-role").value;
+            let password = document.getElementById("new-emp-password").value;
+
+            if (!name || !phone || !rank || !role || !password) {
+                alert("Bitte alle Felder ausfüllen!");
+                return;
             }
+
+            let newId = employees.length ? employees[employees.length - 1].id + 1 : 1;
+            employees.push({ id: newId, name, phone, rank, role, status: "Aktiv", password });
+            loadEmployees();
+            alert(`Mitarbeiter ${name} wurde hinzugefügt!`);
         }
 
-        function loadSanctions() {
-            let table = document.getElementById("sanction-table");
-            table.innerHTML = "";
-            sanctions.forEach((s, index) => {
-                table.innerHTML += `
-                    <tr>
-                        <td>${s.name}</td>
-                        <td>${s.reason}</td>
-                        <td>${s.description}</td>
-                        <td><button onclick="toggleSanction(${index})">${s.status}</button></td>
-                    </tr>
-                `;
-            });
-        }
+        function removeEmployee(id) {
+            if (currentUser !== "Admin") {
+                alert("Nur Admins können Mitarbeiter entfernen!");
+                return;
+            }
 
-        function toggleSanction(index) {
-            sanctions[index].status = sanctions[index].status === "Aktiv" ? "Abgeschlossen" : "Aktiv";
-            loadSanctions();
+            employees = employees.filter(e => e.id !== id);
+            loadEmployees();
+            alert("Mitarbeiter entfernt.");
         }
     </script>
 
