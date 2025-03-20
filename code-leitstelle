@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Leitstellenmanagement</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .hidden {
+            display: none;
+        }
+        .tabs button {
+            padding: 10px;
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        .active {
+            font-weight: bold;
+            text-decoration: underline;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        .badge {
+            padding: 5px;
+            color: white;
+            border-radius: 5px;
+        }
+        .badge.success {
+            background-color: green;
+        }
+        .badge.danger {
+            background-color: red;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen">
+        <h2>Login</h2>
+        <input type="text" id="username" placeholder="Benutzername">
+        <button onclick="login()">Anmelden</button>
+    </div>
+
+    <div id="app" class="hidden">
+        <h1>Leitstellenmanagement</h1>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('mitarbeiter')">Mitarbeiter</button>
+            <button class="tab-btn" onclick="switchTab('sektoren')">Sektoren</button>
+            <button class="tab-btn" onclick="switchTab('sanktionen')">Sanktionen</button>
+        </div>
+
+        <!-- Mitarbeiterliste -->
+        <div id="mitarbeiter" class="tab-content">
+            <h2>Mitarbeiterliste</h2>
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Telefonnummer</th>
+                    <th>Rang</th>
+                    <th>Rolle</th>
+                    <th>Sektor</th>
+                    <th>Status</th>
+                    <th>Aktion</th>
+                </tr>
+                <tbody id="employee-table"></tbody>
+            </table>
+        </div>
+
+        <!-- Sektorverwaltung -->
+        <div id="sektoren" class="tab-content hidden">
+            <h2>Sektorverwaltung</h2>
+            <select id="sector-select"></select>
+            <p>Ausgewählter Sektor: <span id="selected-sector">Nord</span></p>
+            <input type="text" id="new-sector" placeholder="Neuen Sektor hinzufügen">
+            <button onclick="addSector()">Hinzufügen</button>
+        </div>
+
+        <!-- Sanktionen -->
+        <div id="sanktionen" class="tab-content hidden">
+            <h2>Sanktionssystem</h2>
+            <table>
+                <tr>
+                    <th>Name</th>
+                    <th>Grund</th>
+                    <th>Beschreibung</th>
+                    <th>Status</th>
+                    <th>Aktion</th>
+                </tr>
+                <tbody id="sanction-table"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        let employees = [
+            { id: 1, name: "Max Mustermann", phone: "123-456789", rank: "Leiter", role: "Dispatcher", sector: "Nord", status: "Aktiv" },
+            { id: 2, name: "Erika Muster", phone: "987-654321", rank: "Operator", role: "Operator", sector: "Süd", status: "Inaktiv" },
+            { id: 3, name: "Paul Schmidt", phone: "456-789123", rank: "Supervisor", role: "Dispatcher", sector: "Ost", status: "Aktiv" }
+        ];
+        
+        let sectors = ["Nord", "Süd", "Ost", "West"];
+        let sanctions = [];
+
+        function login() {
+            document.getElementById("login-screen").classList.add("hidden");
+            document.getElementById("app").classList.remove("hidden");
+            loadEmployees();
+            loadSectors();
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll(".tab-content").forEach(el => el.classList.add("hidden"));
+            document.getElementById(tab).classList.remove("hidden");
+            document.querySelectorAll(".tab-btn").forEach(btn => btn.classList.remove("active"));
+            event.target.classList.add("active");
+        }
+
+        function loadEmployees() {
+            let table = document.getElementById("employee-table");
+            table.innerHTML = "";
+            employees.forEach(emp => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${emp.name}</td>
+                        <td>${emp.phone}</td>
+                        <td>${emp.rank}</td>
+                        <td>${emp.role}</td>
+                        <td>${emp.sector}</td>
+                        <td><span class="badge ${emp.status === "Aktiv" ? "success" : "danger"}">${emp.status}</span></td>
+                        <td><button onclick="addSanction(${emp.id})">Verwarnen</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function loadSectors() {
+            let select = document.getElementById("sector-select");
+            select.innerHTML = "";
+            sectors.forEach(sec => {
+                let option = document.createElement("option");
+                option.value = sec;
+                option.innerText = sec;
+                select.appendChild(option);
+            });
+        }
+
+        function addSector() {
+            let newSector = document.getElementById("new-sector").value;
+            if (newSector && !sectors.includes(newSector)) {
+                sectors.push(newSector);
+                loadSectors();
+                document.getElementById("new-sector").value = "";
+            }
+        }
+
+        function addSanction(empId) {
+            let emp = employees.find(e => e.id === empId);
+            let reason = prompt("Grund für die Sanktion:");
+            let description = prompt("Beschreibung:");
+            if (reason && description) {
+                sanctions.push({ name: emp.name, reason, description, status: "Aktiv" });
+                loadSanctions();
+            }
+        }
+
+        function loadSanctions() {
+            let table = document.getElementById("sanction-table");
+            table.innerHTML = "";
+            sanctions.forEach((s, index) => {
+                table.innerHTML += `
+                    <tr>
+                        <td>${s.name}</td>
+                        <td>${s.reason}</td>
+                        <td>${s.description}</td>
+                        <td><button onclick="toggleSanction(${index})">${s.status}</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function toggleSanction(index) {
+            sanctions[index].status = sanctions[index].status === "Aktiv" ? "Abgeschlossen" : "Aktiv";
+            loadSanctions();
+        }
+    </script>
+
+</body>
+</html>
